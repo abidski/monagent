@@ -1,4 +1,5 @@
 import langchain_core.tools
+from models.classifier_model import predict_image
 
 
 @tools
