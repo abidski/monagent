@@ -1,8 +1,8 @@
-import langchain_core.tools
+from langchain_core.tools import tool
 from models.classifier_model import predict_image
 
 
-@tools
+@tool
 def analyze_medical_image(image_path) -> dict:
     """
     Analyze a 2D medical image using the MONAI MedNIST classifier.
