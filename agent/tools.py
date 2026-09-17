@@ -1,4 +1,5 @@
 from langchain_core.tools import tool
+from langchain_community.tools import DuckDuckGoSearchRun
 from models.classifier_model import predict_image
 
 
@@ -28,3 +29,18 @@ def analyze_medical_image(image_path) -> dict:
         prediction confidence, and probabilities for all categories.
     """
     return predict_image(image_path)
+
+
+@tool
+def web_search(query: str) -> str:
+    """
+    Search the web for reliable information related to medical imaging.
+
+    Args:
+        query: A focused research question or search query.
+
+    Returns:
+        Relevant search results containing titles, URLs, and snippets.
+    """
+    search = DuckDuckGoSearchRun()
+    return search.run(query)
