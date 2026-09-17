@@ -5,6 +5,10 @@ from tools import analyze_medical_image
 from langchain.agents.middleware import ModelRetryMiddleware, ToolRetryMiddleware
 
 
+# --- Agent ---
+os.environ["GROQ_API_KEY"] = input("Enter Groq API key: ")
+llm = ChatGroq(model="openai/gpt-oss-120b")
+
 agent = create_agent(
     model=ChatGroq(model="llama-3.1-8b-instant"),
     tools=[analyze_medical_image],
@@ -12,10 +16,22 @@ agent = create_agent(
         ModelRetryMiddleware(max_retries=3),
         ToolRetryMiddleware(max_retries=2),
     ],
+    system_prompt="""You orchestrate medical imaging tools for research/
+    educational purposes. Report technical output only. Never provide a
+    diagnosis. Always note that findings require professional review.""",
 )
 
-
+# --- Test ---
 if __name__ == "__main__":
-    os.environ["GROQ_API_KEY"] = os.environ.get("GROQ_API_KEY", "")
-    if not os.environ["GROQ_API_KEY"]:
-        os.environ["GROQ_API_KEY"] = input("Enter your Groq API key: ")
+    image_path = input("Enter image path: ")
+    result = agent.invoke(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": f"What kind of scan is this: {image_path}",
+                }
+            ]
+        }
+    )
+    print(f"\n{result['messages'][-1].content}\n")
