@@ -10,7 +10,7 @@ if __name__ == "__main__":
         {
             "messages": [
                 {
-                    "role": "user",
+                    "role": "admin",
                     "content": f"What kind of scan is this: {image_path}",
                 }
             ]
