@@ -11,5 +11,3 @@ class AgentState(TypedDict):
     research: str
     interpretation: str
     report: str
-    messages: Annotated[list[AnyMessage], operator.add]
-    llm_calls: int
