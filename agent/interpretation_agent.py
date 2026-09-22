@@ -1,5 +1,6 @@
 from langchain.agents import create_agent
 from langchain.agents.middleware import ModelRetryMiddleware, ToolRetryMiddleware
+from langchain_groq import ChatGroq
 
 INTERPRETATION_PROMPT = """
 You are a medical imaging interpretation assistant.
@@ -28,7 +29,7 @@ Provide a clear, concise interpretation.
 
 
 interpretation_agent = create_agent(
-    model="openai/gpt-oss-20b",
+    model=ChatGroq(model="openai/gpt-oss-20b"),
     tools=[],
     system_prompt=INTERPRETATION_PROMPT,
 )

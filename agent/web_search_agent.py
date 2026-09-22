@@ -1,4 +1,6 @@
 from langchain.agents import create_agent
+from langchain.agents.middleware import ModelRetryMiddleware, ToolRetryMiddleware
+from langchain_groq import ChatGroq
 
 from agent.tools import web_search
 
@@ -25,7 +27,11 @@ SYSTEM_PROMPT = """
 
 
 research_agent = create_agent(
-    model="openai/gpt-oss-120b",
+    model=ChatGroq(model="openai/gpt-oss-120b"),
     tools=[web_search],
+    middleware=[
+        ModelRetryMiddleware(max_retries=3),
+        ToolRetryMiddleware(max_retries=2),
+    ],
     system_prompt=SYSTEM_PROMPT,
 )

@@ -1,5 +1,6 @@
 from langchain.agents import create_agent
-from langchain.agents.middleware import ModelRetryMiddleware, ToolRetryMiddleware
+from langchain.agents.middleware import ModelRetryMiddleware
+from langchain_groq import ChatGroq
 
 REPORT_PROMPT = """
 You are a medical imaging research report writer.
@@ -33,7 +34,8 @@ Important rules:
 
 
 report_agent = create_agent(
-    model="qwen/qwen3.8-27b",
+    model=ChatGroq(model="qwen/qwen3.6-27b"),
     tools=[],
+    middleware=[ModelRetryMiddleware(max_retries=3)],
     system_prompt=REPORT_PROMPT,
 )

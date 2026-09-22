@@ -1,107 +1,82 @@
-from pathlib import Path
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
-from PIL import Image
 
 from models.classifier_model import predict_image
+from agent.research_agent import research_agent
+from agent.interpretation_agent import interpretation_agent
+from agent.report_agent import report_agent
 
-CONFIDENCE_THRESHOLD = 0.90
 DISCLAIMER = (
     "\n\nThis is a research tool output, not a medical diagnosis. "
     "Findings require review by a qualified professional."
 )
 
 
-class PipelineState(TypedDict, total=False):
+class AgentState(TypedDict, total=False):
     image_path: str
-    is_valid: bool
-    validation_error: str
-    prediction: dict
-    needs_review: bool
+    image_analysis: dict
+    research: str
+    interpretation: str
     report: str
 
 
-def validate_node(state: PipelineState) -> dict:
-    path = Path(state["image_path"])
-    if not path.exists():
-        return {"is_valid": False, "validation_error": f"File not found: {path}"}
-    if path.suffix.lower() not in {".jpg", ".jpeg", ".png"}:
-        return {
-            "is_valid": False,
-            "validation_error": f"Unsupported format: {path.suffix}",
-        }
-    try:
-        with Image.open(path) as img:
-            img.verify()
-    except Exception as e:
-        return {"is_valid": False, "validation_error": f"Unreadable image: {e}"}
-    return {"is_valid": True}
+def ask(agent, content: str) -> str:
+    result = agent.invoke({"messages": [{"role": "user", "content": content}]})
+    return result["messages"][-1].content
 
 
-def classify_node(state: PipelineState) -> dict:
-    return {"prediction": predict_image(state["image_path"])}
+def scan_node(state: AgentState) -> dict:
+    return {"image_analysis": predict_image(state["image_path"])}
 
 
-def review_node(state: PipelineState) -> dict:
-    confidence = state["prediction"]["confidence"]
-    return {"needs_review": confidence < CONFIDENCE_THRESHOLD}
-
-
-def build_report_node(llm):
-    def report_node(state: PipelineState) -> dict:
-        pred = state["prediction"]
-        response = llm.invoke(
-            [
-                (
-                    "system",
-                    "You write short technical summaries of image classification "
-                    "results. Never give a diagnosis or clinical interpretation.",
-                ),
-                ("human", f"Summarize this classification result: {pred}"),
-            ]
-        )
-        return {"report": response.content + DISCLAIMER}
-
-    return report_node
-
-
-def flag_node(state: PipelineState) -> dict:
-    pred = state["prediction"]
+def research_node(state: AgentState) -> dict:
+    label = state["image_analysis"]["label"]
     return {
-        "report": (
-            f"LOW CONFIDENCE - flagged for review.\n"
-            f"Predicted: {pred['label']} ({pred['confidence']:.2%})" + DISCLAIMER
+        "research": ask(
+            research_agent,
+            f"Find general educational information about {label} imaging: "
+            f"what the modality is and what it is typically used for.",
         )
     }
 
 
-def invalid_node(state: PipelineState) -> dict:
-    return {"report": f"Image rejected before analysis: {state['validation_error']}"}
+def interpret_node(state: AgentState) -> dict:
+    return {
+        "interpretation": ask(
+            interpretation_agent,
+            f"Model output: {state['image_analysis']}\n\n"
+            f"Research findings: {state['research']}",
+        )
+    }
 
 
-def build_graph(llm):
-    graph = StateGraph(PipelineState)
-    graph.add_node("validate", validate_node)
-    graph.add_node("classify", classify_node)
-    graph.add_node("review", review_node)
-    graph.add_node("report", build_report_node(llm))
-    graph.add_node("flag", flag_node)
-    graph.add_node("invalid", invalid_node)
-
-    graph.add_edge(START, "validate")
-    graph.add_conditional_edges(
-        "validate",
-        lambda s: "classify" if s["is_valid"] else "invalid",
-        {"classify": "classify", "invalid": "invalid"},
+def report_node(state: AgentState) -> dict:
+    report = ask(
+        report_agent,
+        f"Model output: {state['image_analysis']}\n\n"
+        f"Research findings: {state['research']}\n\n"
+        f"Interpretation: {state['interpretation']}",
     )
-    graph.add_edge("classify", "review")
-    graph.add_conditional_edges(
-        "review",
-        lambda s: "flag" if s["needs_review"] else "report",
-        {"report": "report", "flag": "flag"},
-    )
+    return {"report": report + DISCLAIMER}
+
+
+def build_graph():
+    graph = StateGraph(AgentState)
+    graph.add_node("scan", scan_node)
+    graph.add_node("research", research_node)
+    graph.add_node("interpret", interpret_node)
+    graph.add_node("report", report_node)
+
+    graph.add_edge(START, "scan")
+    graph.add_edge("scan", "research")
+    graph.add_edge("research", "interpret")
+    graph.add_edge("interpret", "report")
     graph.add_edge("report", END)
-    graph.add_edge("flag", END)
-    graph.add_edge("invalid", END)
     return graph.compile()
+
+
+if __name__ == "__main__":
+    graph = build_graph()
+    result = graph.invoke({"image_path": input("Image path: ")})
+    print(result["report"])

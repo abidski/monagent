@@ -1,5 +1,5 @@
 from langchain.agents import create_agent
-from langchain.agents.middleware import modelretrymiddleware, toolretrymiddleware
+from langchain.agents.middleware import ModelRetryMiddleware, ToolRetryMiddleware
 from langchain_groq import ChatGroq
 
 from agent.tools import analyze_medical_image, web_search
