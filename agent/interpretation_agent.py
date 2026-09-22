@@ -11,12 +11,6 @@ from reliable sources.
 You will receive:
 1. The classification produced by a MONAI model.
 2. The model's confidence and class probabilities.
-report_agent.peclass AgentState(TypedDict):
-    image_path: str
-    image_analysis: dict
-    research: str
-    interpretation: str
-    report: str
 3. Research findings retrieved from the web.
 
 Your responsibilities are to:
